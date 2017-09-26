@@ -1,0 +1,29 @@
+{
+  "name": "formula-parser",
+  "version": "1.0.0",
+  "description": "Google spreadsheet formula parser for writing custom formulas.",
+  "main": "index.js",
+  "scripts": {
+    "test": "nearleyc ./formula-grammar.ne --out ./formula-grammar.js && node test.js",
+    "test-grammar": "nearleyc ./formula-grammar.ne --out ./formula-grammar.js && nearley-test ./formula-grammar.js -i $1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rylphs/gsp-fml-parser.git"
+  },
+  "keywords": [
+    "spreadsheet",
+    "google",
+    "formula"
+  ],
+  "author": "Raphael Couto Ferreira",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/rylphs/gsp-fml-parser/issues"
+  },
+  "homepage": "https://github.com/rylphs/gsp-fml-parser#readme",
+  "dependencies": {
+    "moo": "^0.4.3",
+    "nearley": "^2.11.0"
+  }
+}
