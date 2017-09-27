@@ -9,8 +9,11 @@ var fmlMap = {};
 
 //[ [sep, param], [sep, param] ]
 const processFml = ([fml, firstParam, restParams, endFml]) => {
-   // console.log(restParams);
+   // var [fml, firstParam, restParams, endFml] = arr;
+    //fml.argString = oneString(arr.slice(1, arr.length-1)).text;
     fml.args = [firstParam.text].concat(restParams.map((item)=> item[1].text))
+    //console.log("dynfml args", restParams, fml,  fml.args);
+    //console.log("dynfml rest", restParams);
     return fml;
 }
 
@@ -26,7 +29,6 @@ const processParam = (arr) => {
 }
 
 const oneString = (arr) => {
-    console.log("oneString", flatten(arr));
     arr[0].text = flatten(arr).reduce((reduced, item) => reduced + (item.text || ""), "");
     return arr[0];
     // fml.text = fml.text + firstParam +
@@ -41,7 +43,7 @@ const oneString = (arr) => {
 const processEndFml = (arr) => {
     fmlStack.pop();
     return null;
-}
+} 
 
 const flatten = (arr) => {
     return arr.reduce((flat, item) =>{
@@ -92,7 +94,7 @@ var grammar = {
     {"name": "fml$ebnf$2", "symbols": []},
     {"name": "fml$ebnf$2$subexpression$1", "symbols": [{"literal":";"}, "param"]},
     {"name": "fml$ebnf$2", "symbols": ["fml$ebnf$2", "fml$ebnf$2$subexpression$1"], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
-    {"name": "fml", "symbols": [(lexer.has("fml") ? {type: "fml"} : fml), "fml$ebnf$1", "fml$ebnf$2", "endFml"], "postprocess": oneString},
+    {"name": "fml", "symbols": [(lexer.has("fml") ? {type: "fml"} : fml), "fml$ebnf$1", "fml$ebnf$2", "endFml"]},
     {"name": "dynfml$ebnf$1", "symbols": ["param"], "postprocess": id},
     {"name": "dynfml$ebnf$1", "symbols": [], "postprocess": function(d) {return null;}},
     {"name": "dynfml$ebnf$2", "symbols": []},
@@ -116,7 +118,7 @@ var grammar = {
     {"name": "dynfml2$ebnf$2", "symbols": []},
     {"name": "dynfml2$ebnf$2$subexpression$1", "symbols": [{"literal":";"}, "param"]},
     {"name": "dynfml2$ebnf$2", "symbols": ["dynfml2$ebnf$2", "dynfml2$ebnf$2$subexpression$1"], "postprocess": function arrpush(d) {return d[0].concat([d[1]]);}},
-    {"name": "dynfml2", "symbols": [(lexer.has("dynfml") ? {type: "dynfml"} : dynfml), "dynfml2$ebnf$1", "dynfml2$ebnf$2", "endFml"], "postprocess": oneString},
+    {"name": "dynfml2", "symbols": [(lexer.has("dynfml") ? {type: "dynfml"} : dynfml), "dynfml2$ebnf$1", "dynfml2$ebnf$2", "endFml"], "postprocess": processFml},
     {"name": "endFml", "symbols": [(lexer.has("endFml") ? {type: "endFml"} : endFml)]}
 ]
   , ParserStart: "main"

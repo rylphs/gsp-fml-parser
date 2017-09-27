@@ -5,8 +5,11 @@ var fmlMap = {};
 
 //[ [sep, param], [sep, param] ]
 const processFml = ([fml, firstParam, restParams, endFml]) => {
-   // console.log(restParams);
+   // var [fml, firstParam, restParams, endFml] = arr;
+    //fml.argString = oneString(arr.slice(1, arr.length-1)).text;
     fml.args = [firstParam.text].concat(restParams.map((item)=> item[1].text))
+    //console.log("dynfml args", restParams, fml,  fml.args);
+    //console.log("dynfml rest", restParams);
     return fml;
 }
 
@@ -22,7 +25,6 @@ const processParam = (arr) => {
 }
 
 const oneString = (arr) => {
-    console.log("oneString", flatten(arr));
     arr[0].text = flatten(arr).reduce((reduced, item) => reduced + (item.text || ""), "");
     return arr[0];
     // fml.text = fml.text + firstParam +
@@ -37,7 +39,7 @@ const oneString = (arr) => {
 const processEndFml = (arr) => {
     fmlStack.pop();
     return null;
-}
+} 
 
 const flatten = (arr) => {
     return arr.reduce((flat, item) =>{
@@ -78,12 +80,12 @@ const lexer = moo.states({
 main -> exp (%op exp):* {%flatten%}
 exp -> fmlXp {%id%} | %number {%id%} | %posArg {%id%}
 fmlXp -> fml {%id%} | dynfml {%id%}
-fml -> %fml param:? (";" param):* endFml {%oneString%}
+fml -> %fml param:? (";" param):* endFml
 dynfml -> %dynfml param:? (";" param):* endFml {%processFml%}
 
 param -> exp2 {%id%}
 exp2 -> fmlXp2 {%id%} | %number {%id%} | %posArg {%id%}
 fmlXp2 -> fml2 {%id%} | dynfml2 {%id%}
 fml2 -> %fml param:? (";" param):* endFml {%oneString%}
-dynfml2 -> %dynfml param:? (";" param):* endFml {%oneString%}
+dynfml2 -> %dynfml param:? (";" param):* endFml {%processFml%}
 endFml -> %endFml
