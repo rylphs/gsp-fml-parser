@@ -4,12 +4,11 @@
   "description": "Google spreadsheet formula parser for writing custom formulas.",
   "main": "index.js",
   "scripts": {
-    "build-formula-grammar": "nearleyc ./formula-grammar.ne --out ./formula-grammar.js",
-    "build-args-grammar": "nearleyc ./argument-grammar.ne --out ./argument-grammar.js",
-    "build-parser": "tsc --target ES5 formula-parser.ts",
-    "build": "npm run build-formula-grammar && npm run build-args-grammar && npm run build-parser",
+    "build-grammars": "nearleyc ./formula-grammar.ne --out ./formula-grammar.ts && nearleyc ./argument-grammar.ne --out ./argument-grammar.ts",
+    "ts-compile": "tsc --target ES5 formula-parser.ts formula-grammar.ts argument-grammar.ts",
+    "build": "npm run build-grammars && npm run ts-compile",
     "test": "npm run build && node test.js",
-    "test-grammar": "nearleyc ./formula-grammar.ne --out ./formula-grammar.js && nearley-test ./formula-grammar.js -i $1"
+    "test-grammar": "npm run build && nearley-test ./formula-grammar.js -i $1"
   },
   "repository": {
     "type": "git",

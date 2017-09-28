@@ -1,7 +1,13 @@
+@preprocessor typescript
 @{%
-const moo = require("moo");
+declare var exports:any;
+declare var require:any;
+declare var module:any;
 
-module.exports.args = [];
+var module = module || {exports};
+const context:any = !!module ? module.exports : {}
+
+const moo = require("moo");
 
 const lexer = moo.compile({
     escaped: {match: /\\%[0-9]+/, value: (str) => str.replace(/^\\+/, '')},
@@ -14,7 +20,7 @@ const lexer = moo.compile({
 const nuller = () => null;
 const flatten = (arr) => arr[0][0];
 const replaceArg = ([argIndex]) => {
-    argIndex.value = module.exports.args[Number(argIndex.value)] || "";
+    argIndex.value = context.args[Number(argIndex.value)] || "";
     return argIndex;
 }
 %}

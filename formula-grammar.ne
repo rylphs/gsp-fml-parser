@@ -1,4 +1,9 @@
+@preprocessor typescript
 @{%
+declare var exports:any;
+declare var require:any;
+declare var module:any;
+
 const moo = require("moo");
 var fmlStack = [];
 var fmlMap = {};
