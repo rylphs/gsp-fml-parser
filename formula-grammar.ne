@@ -8,13 +8,8 @@ const moo = require("moo");
 var fmlStack = [];
 var fmlMap = {};
 
-//[ [sep, param], [sep, param] ]
 const processFml = ([fml, firstParam, restParams, endFml]) => {
-   // var [fml, firstParam, restParams, endFml] = arr;
-    //fml.argString = oneString(arr.slice(1, arr.length-1)).text;
     fml.args = [firstParam.text].concat(restParams.map((item)=> item[1].text))
-    //console.log("dynfml args", restParams, fml,  fml.args);
-    //console.log("dynfml rest", restParams);
     return fml;
 }
 
@@ -32,13 +27,6 @@ const processParam = (arr) => {
 const oneString = (arr) => {
     arr[0].text = flatten(arr).reduce((reduced, item) => reduced + (item.text || ""), "");
     return arr[0];
-    // fml.text = fml.text + firstParam +
-    //     restParams.reduce((reduced, item) => {
-    //         if(!item) return reduced;
-    //         return reduced + (item[0].text || "") + (item[1].text || "");
-    //     }, "") +
-    //     endFml;
-    // return fml;
 }
 
 const processEndFml = (arr) => {
@@ -55,25 +43,56 @@ const flatten = (arr) => {
     },[]);
 }
 
-const lexer = moo.states({
-    main: {
+const token = function(name, opt:any = {}){
+    var tks = {
         posArg: {match: /%[0-9]+/, value: (v) => v.replace(/^./, '')},
         dynfml: {match: /\%[\w]+[ \t]*\(/,
-            value: name => name.substring(1, name.length-1), push: "fml"},
+            value: name => name.substring(1, name.length-1)},
         number: {match: /[0-9]+/},
         op: {match: /[\+\-\/\*]/},
-        fml: {match: /[A-Za-z][A-Za-z0-9]*\(/, push: "fml"},
-    },
-    fml: {
+        fml: {match: /[A-Za-z][A-Za-z0-9]*\(/},
+        rng: {match: /(?:[a-zA-Z]+[0-9]+(?:\:[a-zA-Z]+[0-9]+)?|[a-zA-Z]+\:[a-zA-Z]+|[0-9]+\:[0-9]+)/},
         endFml : {match: /\)/, pop:true},
-        number: {match: /[0-9]+/},
-        dynfml: {match: /\%[\w]+[ \t]*\(/,
-            value: name => name.substring(1, name.length-1), push: "fml"},
-        fml: {match: /[A-Za-z][A-Za-z0-9]*\(/, push: "fml"},
-        posArg: {match: /%[0-9]+/, value: (v) => v.replace(/^./, '')},
+        dynrng2: {match: /\%(?:cell|row|col)/},
+        dynrng: {match: /\%(?:cell|row|col)(?:[\>\<\+\-][0-9]+(?:row|col)s?)*/},
         param: { match: /[^;\)]+/, lineBreaks: true},
         sep: ";",
-        
+        rngop: {match: /[\>\<\+\-]/},
+        rngcount: {match: /[0-9]+/, value: n => Number(n)},
+        rngtp: {match:/(?:rows|cols)/},
+        rp: {match: /\)/, pop: true},
+        pspl: {match: /;/, pop:true},
+        spc: {match: /[\t ]+/, pop:true}
+    };
+
+    var tk = tks[name];
+    for(var i in opt){
+        tk[i] = opt[i];
+    }
+    return tk;
+}
+
+
+const lexer = moo.states({
+    main: {
+        posArg: token("posArg"),
+        dynfml: token("dynfml", {push: "fml"}),
+        number: token("number"),
+        op: token("op"),
+        fml: token("fml", {push: "fml"}),
+        rng: token("rng"),
+        dynrng: token("dynrng"),
+    },
+    fml: {
+        endFml : token("endFml", {pop:true}),
+        number: token("number"),
+        dynfml: token("dynfml", {push: "fml"}),
+        fml: token("fml", {push: "fml"}),
+        posArg: token("posArg"),
+        rng: token("rng"),
+        dynrng: token("dynrng"),
+        //param: token("param"),
+        sep: token("sep"),
     }
 })
 
@@ -83,13 +102,14 @@ const lexer = moo.states({
 @lexer lexer
 
 main -> exp (%op exp):* {%flatten%}
-exp -> fmlXp {%id%} | %number {%id%} | %posArg {%id%}
+exp -> fmlXp {%id%} | %number {%id%} | %posArg {%id%} | rngXp {%id%}
 fmlXp -> fml {%id%} | dynfml {%id%}
 fml -> %fml param:? (";" param):* endFml
 dynfml -> %dynfml param:? (";" param):* endFml {%processFml%}
+rngXp -> %rng {%id%} | %dynrng {%id%}
 
 param -> exp2 {%id%}
-exp2 -> fmlXp2 {%id%} | %number {%id%} | %posArg {%id%}
+exp2 -> fmlXp2 {%id%} | %number {%id%} | %posArg {%id%} | rngXp {%id%}
 fmlXp2 -> fml2 {%id%} | dynfml2 {%id%}
 fml2 -> %fml param:? (";" param):* endFml {%oneString%}
 dynfml2 -> %dynfml param:? (";" param):* endFml {%processFml%}
