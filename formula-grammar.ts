@@ -6,8 +6,8 @@ declare var number:any;
 declare var posArg:any;
 declare var fml:any;
 declare var dynfml:any;
-declare var rng:any;
-declare var dynrng:any;
+declare var a1b1:any;
+declare var r1c1:any;
 declare var endFml:any;
 
 declare var exports:any;
@@ -61,10 +61,12 @@ const token = function(name, opt:any = {}){
         number: {match: /[0-9]+/},
         op: {match: /[\+\-\/\*]/},
         fml: {match: /[A-Za-z][A-Za-z0-9]*\(/},
-        rng: {match: /(?:[a-zA-Z]+[0-9]+(?:\:[a-zA-Z]+[0-9]+)?|[a-zA-Z]+\:[a-zA-Z]+|[0-9]+\:[0-9]+)/},
+        a1b1: {match: /(?:[a-zA-Z]+[0-9]+(?:\:[a-zA-Z]+[0-9]+)?|[a-zA-Z]+\:[a-zA-Z]+|[0-9]+\:[0-9]+)/},
         endFml : {match: /\)/, pop:true},
-        dynrng2: {match: /\%(?:cell|row|col)/},
-        dynrng: {match: /\%(?:cell|row|col)(?:[\>\<\+\-][0-9]+(?:row|col)s?)*/},
+        dynrng2: {match: /\%(?:[RrCc]|[Rr][Cc])/},
+        dynrng: {match: /\%(?:[RrCc]|[Rr][Cc])(?:[\>\<\+\-][0-9]+[RrCc]?)*/},
+        r1c1: {match: /[Rr](?:[0-9]+|\[-?[0-9]+\])[Cc](?:[0-9]+|\[-?[0-9]+\])(?:[Rr](?:[0-9]+|\[-?[0-9]+\])[Cc](?:[0-9]+|\[-?[0-9]+\]))?/,
+            value: (r1c1) => 'INDIRECT("'+r1c1+'";FALSE)'},
         param: { match: /[^;\)]+/, lineBreaks: true},
         sep: ";",
         rngop: {match: /[\>\<\+\-]/},
@@ -90,7 +92,8 @@ const lexer = moo.states({
         number: token("number"),
         op: token("op"),
         fml: token("fml", {push: "fml"}),
-        rng: token("rng"),
+        r1c1: token("r1c1"),
+        a1b1: token("a1b1"),
         dynrng: token("dynrng"),
     },
     fml: {
@@ -99,7 +102,8 @@ const lexer = moo.states({
         dynfml: token("dynfml", {push: "fml"}),
         fml: token("fml", {push: "fml"}),
         posArg: token("posArg"),
-        rng: token("rng"),
+        r1c1: token("r1c1"),
+        a1b1: token("a1b1"),
         dynrng: token("dynrng"),
         //param: token("param"),
         sep: token("sep"),
@@ -120,7 +124,7 @@ export var ParserRules:NearleyRule[] = [
     {"name": "exp", "symbols": ["fmlXp"], "postprocess": id},
     {"name": "exp", "symbols": [(lexer.has("number") ? {type: "number"} : number)], "postprocess": id},
     {"name": "exp", "symbols": [(lexer.has("posArg") ? {type: "posArg"} : posArg)], "postprocess": id},
-    {"name": "exp", "symbols": ["rngXp"], "postprocess": id},
+    {"name": "exp", "symbols": ["rng"], "postprocess": id},
     {"name": "fmlXp", "symbols": ["fml"], "postprocess": id},
     {"name": "fmlXp", "symbols": ["dynfml"], "postprocess": id},
     {"name": "fml$ebnf$1", "symbols": ["param"], "postprocess": id},
@@ -135,13 +139,13 @@ export var ParserRules:NearleyRule[] = [
     {"name": "dynfml$ebnf$2$subexpression$1", "symbols": [{"literal":";"}, "param"]},
     {"name": "dynfml$ebnf$2", "symbols": ["dynfml$ebnf$2", "dynfml$ebnf$2$subexpression$1"], "postprocess": (d) => d[0].concat([d[1]])},
     {"name": "dynfml", "symbols": [(lexer.has("dynfml") ? {type: "dynfml"} : dynfml), "dynfml$ebnf$1", "dynfml$ebnf$2", "endFml"], "postprocess": processFml},
-    {"name": "rngXp", "symbols": [(lexer.has("rng") ? {type: "rng"} : rng)], "postprocess": id},
-    {"name": "rngXp", "symbols": [(lexer.has("dynrng") ? {type: "dynrng"} : dynrng)], "postprocess": id},
+    {"name": "rng", "symbols": [(lexer.has("a1b1") ? {type: "a1b1"} : a1b1)], "postprocess": id},
+    {"name": "rng", "symbols": [(lexer.has("r1c1") ? {type: "r1c1"} : r1c1)], "postprocess": id},
     {"name": "param", "symbols": ["exp2"], "postprocess": id},
     {"name": "exp2", "symbols": ["fmlXp2"], "postprocess": id},
     {"name": "exp2", "symbols": [(lexer.has("number") ? {type: "number"} : number)], "postprocess": id},
     {"name": "exp2", "symbols": [(lexer.has("posArg") ? {type: "posArg"} : posArg)], "postprocess": id},
-    {"name": "exp2", "symbols": ["rngXp"], "postprocess": id},
+    {"name": "exp2", "symbols": ["rng"], "postprocess": id},
     {"name": "fmlXp2", "symbols": ["fml2"], "postprocess": id},
     {"name": "fmlXp2", "symbols": ["dynfml2"], "postprocess": id},
     {"name": "fml2$ebnf$1", "symbols": ["param"], "postprocess": id},

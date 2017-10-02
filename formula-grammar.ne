@@ -51,10 +51,12 @@ const token = function(name, opt:any = {}){
         number: {match: /[0-9]+/},
         op: {match: /[\+\-\/\*]/},
         fml: {match: /[A-Za-z][A-Za-z0-9]*\(/},
-        rng: {match: /(?:[a-zA-Z]+[0-9]+(?:\:[a-zA-Z]+[0-9]+)?|[a-zA-Z]+\:[a-zA-Z]+|[0-9]+\:[0-9]+)/},
+        a1b1: {match: /(?:[a-zA-Z]+[0-9]+(?:\:[a-zA-Z]+[0-9]+)?|[a-zA-Z]+\:[a-zA-Z]+|[0-9]+\:[0-9]+)/},
         endFml : {match: /\)/, pop:true},
-        dynrng2: {match: /\%(?:cell|row|col)/},
-        dynrng: {match: /\%(?:cell|row|col)(?:[\>\<\+\-][0-9]+(?:row|col)s?)*/},
+        dynrng2: {match: /\%(?:[RrCc]|[Rr][Cc])/},
+        dynrng: {match: /\%(?:[RrCc]|[Rr][Cc])(?:[\>\<\+\-][0-9]+[RrCc]?)*/},
+        r1c1: {match: /[Rr](?:[0-9]+|\[-?[0-9]+\])[Cc](?:[0-9]+|\[-?[0-9]+\])(?:[Rr](?:[0-9]+|\[-?[0-9]+\])[Cc](?:[0-9]+|\[-?[0-9]+\]))?/,
+            value: (r1c1) => 'INDIRECT("'+r1c1+'";FALSE)'},
         param: { match: /[^;\)]+/, lineBreaks: true},
         sep: ";",
         rngop: {match: /[\>\<\+\-]/},
@@ -80,7 +82,8 @@ const lexer = moo.states({
         number: token("number"),
         op: token("op"),
         fml: token("fml", {push: "fml"}),
-        rng: token("rng"),
+        r1c1: token("r1c1"),
+        a1b1: token("a1b1"),
         dynrng: token("dynrng"),
     },
     fml: {
@@ -89,7 +92,8 @@ const lexer = moo.states({
         dynfml: token("dynfml", {push: "fml"}),
         fml: token("fml", {push: "fml"}),
         posArg: token("posArg"),
-        rng: token("rng"),
+        r1c1: token("r1c1"),
+        a1b1: token("a1b1"),
         dynrng: token("dynrng"),
         //param: token("param"),
         sep: token("sep"),
@@ -102,14 +106,14 @@ const lexer = moo.states({
 @lexer lexer
 
 main -> exp (%op exp):* {%flatten%}
-exp -> fmlXp {%id%} | %number {%id%} | %posArg {%id%} | rngXp {%id%}
+exp -> fmlXp {%id%} | %number {%id%} | %posArg {%id%} | rng {%id%}
 fmlXp -> fml {%id%} | dynfml {%id%}
 fml -> %fml param:? (";" param):* endFml
 dynfml -> %dynfml param:? (";" param):* endFml {%processFml%}
-rngXp -> %rng {%id%} | %dynrng {%id%}
+rng -> %a1b1 {%id%} | %r1c1 {%id%}
 
 param -> exp2 {%id%}
-exp2 -> fmlXp2 {%id%} | %number {%id%} | %posArg {%id%} | rngXp {%id%}
+exp2 -> fmlXp2 {%id%} | %number {%id%} | %posArg {%id%} | rng {%id%}
 fmlXp2 -> fml2 {%id%} | dynfml2 {%id%}
 fml2 -> %fml param:? (";" param):* endFml {%oneString%}
 dynfml2 -> %dynfml param:? (";" param):* endFml {%processFml%}
