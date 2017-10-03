@@ -29,6 +29,11 @@ const oneString = (arr) => {
     return arr[0];
 }
 
+const cpValue2Text = ([item]) => {
+    item.text = item.value;
+    return item;
+}
+
 const processEndFml = (arr) => {
     fmlStack.pop();
     return null;
@@ -43,32 +48,33 @@ const flatten = (arr) => {
     },[]);
 }
 
+const trim = (v) => v.replace(/^\s*([^"]+)\s*$/, '$1');
+const removePercent = (v) => trim(v).replace(/^\%/, '');
+const formatFml = (v) => v.replace(/\s*\%([\w]+)[\s]*\(\s*/, '$1');
+const removeSpaces = (v) => v.replace(/\s*/g, '');
+
 const token = function(name, opt:any = {}){
     var tks = {
-        posArg: {match: /%[0-9]+/, value: (v) => v.replace(/^./, '')},
-        dynfml: {match: /\%[\w]+[ \t]*\(/,
-            value: name => name.substring(1, name.length-1)},
-        number: {match: /[0-9]+/},
-        op: {match: /[\+\-\/\*]/},
-        fml: {match: /[A-Za-z][A-Za-z0-9]*\(/},
-        a1b1: {match: /(?:[a-zA-Z]+[0-9]+(?:\:[a-zA-Z]+[0-9]+)?|[a-zA-Z]+\:[a-zA-Z]+|[0-9]+\:[0-9]+)/},
-        endFml : {match: /\)/, pop:true},
-        dynrng2: {match: /\%(?:[RrCc]|[Rr][Cc])/},
-        dynrng: {match: /\%(?:[RrCc]|[Rr][Cc])(?:[\>\<\+\-][0-9]+[RrCc]?)*/},
-        r1c1: {match: /[Rr](?:[0-9]+|\[-?[0-9]+\])[Cc](?:[0-9]+|\[-?[0-9]+\])(?:[Rr](?:[0-9]+|\[-?[0-9]+\])[Cc](?:[0-9]+|\[-?[0-9]+\]))?/,
-            value: (r1c1) => 'INDIRECT("'+r1c1+'";FALSE)'},
-        param: { match: /[^;\)]+/, lineBreaks: true},
-        sep: ";",
-        rngop: {match: /[\>\<\+\-]/},
-        rngcount: {match: /[0-9]+/, value: n => Number(n)},
-        rngtp: {match:/(?:rows|cols)/},
-        rp: {match: /\)/, pop: true},
-        pspl: {match: /;/, pop:true},
-        spc: {match: /[\t ]+/, pop:true}
+        posArg: {match: /\s*%[0-9]+\s*/, value: removePercent},
+        dynfml: {match: /\s*\%[\w]+[\s]*\(\s*/, value: formatFml},
+        number: {match: / *[0-9]+ */, value: removeSpaces},
+        op: {match: /\s*[\+\-\/\*]\s*/, value: removeSpaces},
+        fml: {match: /\s*[A-Za-z][A-Za-z0-9]*\s*\(\s*/, value: removeSpaces},
+        a1b1: {
+            match: /\s*(?:[a-zA-Z]+[0-9]+(?:\:[a-zA-Z]+[0-9]+)?|[a-zA-Z]+\:[a-zA-Z]+|[0-9]+\:[0-9]+)\s*/,
+            value: trim},
+        endFml : {match: /\s*\)\s*/, pop:true, value: trim},
+        r1c1: {match: /\s*\%[Rr](?:[0-9]+|\[-?[0-9]+\])[Cc](?:[0-9]+|\[-?[0-9]+\])(?:[Rr](?:[0-9]+|\[-?[0-9]+\])[Cc](?:[0-9]+|\[-?[0-9]+\]))?\s*/,
+            value: (r1c1) => 'INDIRECT("'+trim(r1c1).replace(/^\%/,'')+'";FALSE)'},
+        sep: {match: /\s*;\s*/, value:trim},
+        spc: {match: /[\t ]+/, pop:true},
+        quote_: {match:/\s*"/, value: trim},
+        _quote: {match:/"\s*/, value: trim},
+        boolean: {match: /(?:[Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee])/}
     };
 
     var tk = tks[name];
-    for(var i in opt){
+    for(var i in opt){ console.log(name, tk);
         tk[i] = opt[i];
     }
     return tk;
@@ -84,9 +90,16 @@ const lexer = moo.states({
         fml: token("fml", {push: "fml"}),
         r1c1: token("r1c1"),
         a1b1: token("a1b1"),
-        dynrng: token("dynrng"),
+        quote_: token("quote_", {push: "quote"}),
+        boolean: token("boolean")
+    },
+    quote:{
+        _quote: token("_quote", {pop: true}),
+        quoted: {match: /[^"]+/, lineBreaks: true}
     },
     fml: {
+        boolean: token("boolean"),
+        quote_: token("quote_", {push: "quote"}),
         endFml : token("endFml", {pop:true}),
         number: token("number"),
         dynfml: token("dynfml", {push: "fml"}),
@@ -94,8 +107,6 @@ const lexer = moo.states({
         posArg: token("posArg"),
         r1c1: token("r1c1"),
         a1b1: token("a1b1"),
-        dynrng: token("dynrng"),
-        //param: token("param"),
         sep: token("sep"),
     }
 })
@@ -106,15 +117,18 @@ const lexer = moo.states({
 @lexer lexer
 
 main -> exp (%op exp):* {%flatten%}
-exp -> fmlXp {%id%} | %number {%id%} | %posArg {%id%} | rng {%id%}
+exp -> fmlXp {%id%} | primitive {%id%} | %posArg {%id%} | rng {%id%}
+primitive -> %number {%cpValue2Text%} | quote {%id%} | %boolean {%id%}
 fmlXp -> fml {%id%} | dynfml {%id%}
-fml -> %fml param:? (";" param):* endFml
-dynfml -> %dynfml param:? (";" param):* endFml {%processFml%}
-rng -> %a1b1 {%id%} | %r1c1 {%id%}
+fml -> %fml param:? (%sep param):* endFml
+dynfml -> %dynfml param:? (%sep param):* endFml {%processFml%}
+rng -> %a1b1 {%id%} | %r1c1 {%cpValue2Text%}
+quote -> %quote_ %quoted %_quote {%oneString%}
 
 param -> exp2 {%id%}
-exp2 -> fmlXp2 {%id%} | %number {%id%} | %posArg {%id%} | rng {%id%}
+exp2 -> fmlXp2 {%id%} | %posArg {%id%} | rng {%id%} | primitive {%id%}
 fmlXp2 -> fml2 {%id%} | dynfml2 {%id%}
-fml2 -> %fml param:? (";" param):* endFml {%oneString%}
-dynfml2 -> %dynfml param:? (";" param):* endFml {%processFml%}
-endFml -> %endFml
+fml2 -> %fml param:? (%sep param):* endFml {%oneString%}
+dynfml2 -> %dynfml param:? (%sep param):* endFml {%processFml%}
+
+endFml -> %endFml {%cpValue2Text%}
