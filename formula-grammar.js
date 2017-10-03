@@ -50,26 +50,32 @@ var removeSpaces = function (v) { return v.replace(/\s*/g, ''); };
 var token = function (name, opt) {
     if (opt === void 0) { opt = {}; }
     var tks = {
+        lp: { match: /\(/ },
+        rp: { match: /\)/ },
         posArg: { match: /\s*%[0-9]+\s*/, value: removePercent },
         dynfml: { match: /\s*\%[\w]+[\s]*\(\s*/, value: formatFml },
         number: { match: /\s*[0-9]+\s*/, value: trim },
         op: { match: /\s*[\+\-\/\*]\s*/, value: trim },
-        fml: { match: /\s*[A-Za-z][A-Za-z0-9]*\s*\(\s*/, value: removeSpaces },
+        fml: { match: /\s*(?:[A-Za-z][A-Za-z0-9]*)?\s*\(\s*/, value: removeSpaces },
         a1b1: {
             match: /\s*(?:[a-zA-Z]+[0-9]+(?:\:[a-zA-Z]+[0-9]+)?|[a-zA-Z]+\:[a-zA-Z]+|[0-9]+\:[0-9]+)\s*/,
             value: trim
         },
         endFml: { match: /\s*\)\s*/, pop: true, value: trim },
         r1c1: { match: /\s*\%[Rr](?:[0-9]+|\[-?[0-9]+\])[Cc](?:[0-9]+|\[-?[0-9]+\])(?:[Rr](?:[0-9]+|\[-?[0-9]+\])[Cc](?:[0-9]+|\[-?[0-9]+\]))?\s*/,
-            value: function (r1c1) { return 'INDIRECT("' + trim(r1c1).replace(/^\%/, '') + '";FALSE)'; } },
+            value: function (r1c1) { return 'INDIRECT("' + trim(r1c1).toUpperCase().replace(/^\%/, '') + '";FALSE)'; } },
+        r2c2: { match: /\s*\%[Rr][\+\-][0-9]+[Cc][\+\-][0-9]+\s*/,
+            value: function (r1c1) { return 'INDIRECT("' +
+                trim(r1c1).toUpperCase().replace(/^\%/, '').replace(/([\+\-][0-9]+)/g, '[$1]').replace(/\+/g, '') +
+                '";FALSE)'; } },
         sep: { match: /\s*;\s*/, value: trim },
         quote_: { match: /\s*"/, value: trim },
         _quote: { match: /"\s*/, value: trim },
-        boolean: { match: /(?:[Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee])/, value: trim }
+        boolean: { match: /(?:[Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee])/, value: trim },
+        arr: { match: /\{[^\{\}]+\}/ }
     };
     var tk = tks[name];
     for (var i in opt) {
-        console.log(name, tk);
         tk[i] = opt[i];
     }
     return tk;
@@ -81,10 +87,12 @@ var lexer = moo.states({
         number: token("number"),
         op: token("op"),
         fml: token("fml", { push: "fml" }),
+        r2c2: token("r2c2"),
         r1c1: token("r1c1"),
         a1b1: token("a1b1"),
         quote_: token("quote_", { push: "quote" }),
-        boolean: token("boolean")
+        boolean: token("boolean"),
+        arr: token("arr")
     },
     quote: {
         _quote: token("_quote", { pop: true }),
@@ -95,12 +103,15 @@ var lexer = moo.states({
         quote_: token("quote_", { push: "quote" }),
         endFml: token("endFml", { pop: true }),
         number: token("number"),
+        op: token("op"),
         dynfml: token("dynfml", { push: "fml" }),
         fml: token("fml", { push: "fml" }),
         posArg: token("posArg"),
+        r2c2: token("r2c2"),
         r1c1: token("r1c1"),
         a1b1: token("a1b1"),
         sep: token("sep"),
+        arr: token("arr")
     }
 });
 ;
@@ -115,10 +126,11 @@ exports.ParserRules = [
     { "name": "exp", "symbols": ["fmlXp"], "postprocess": id },
     { "name": "exp", "symbols": ["primitive"], "postprocess": id },
     { "name": "exp", "symbols": [(lexer.has("posArg") ? { type: "posArg" } : posArg)], "postprocess": id },
-    { "name": "exp", "symbols": ["rng"], "postprocess": id },
     { "name": "primitive", "symbols": [(lexer.has("number") ? { type: "number" } : number)], "postprocess": id },
     { "name": "primitive", "symbols": ["quote"], "postprocess": id },
     { "name": "primitive", "symbols": [(lexer.has("boolean") ? { type: "boolean" } : boolean)], "postprocess": id },
+    { "name": "primitive", "symbols": ["rng"], "postprocess": id },
+    { "name": "primitive", "symbols": [(lexer.has("arr") ? { type: "arr" } : arr)], "postprocess": id },
     { "name": "fmlXp", "symbols": ["fml"], "postprocess": id },
     { "name": "fmlXp", "symbols": ["dynfml"], "postprocess": id },
     { "name": "fml$ebnf$1", "symbols": ["param"], "postprocess": id },
@@ -135,13 +147,17 @@ exports.ParserRules = [
     { "name": "dynfml", "symbols": [(lexer.has("dynfml") ? { type: "dynfml" } : dynfml), "dynfml$ebnf$1", "dynfml$ebnf$2", "endFml"], "postprocess": processFml },
     { "name": "rng", "symbols": [(lexer.has("a1b1") ? { type: "a1b1" } : a1b1)], "postprocess": id },
     { "name": "rng", "symbols": [(lexer.has("r1c1") ? { type: "r1c1" } : r1c1)], "postprocess": id },
+    { "name": "rng", "symbols": [(lexer.has("r2c2") ? { type: "r2c2" } : r2c2)], "postprocess": id },
     { "name": "quote", "symbols": [(lexer.has("quote_") ? { type: "quote_" } : quote_), (lexer.has("quoted") ? { type: "quoted" } : quoted), (lexer.has("_quote") ? { type: "_quote" } : _quote)], "postprocess": oneString },
     { "name": "endFml", "symbols": [(lexer.has("endFml") ? { type: "endFml" } : endFml)], "postprocess": id },
-    { "name": "param", "symbols": ["exp2"], "postprocess": id },
+    { "name": "param", "symbols": ["main2"], "postprocess": id },
+    { "name": "main2$ebnf$1", "symbols": [] },
+    { "name": "main2$ebnf$1$subexpression$1", "symbols": [(lexer.has("op") ? { type: "op" } : op), "exp2"] },
+    { "name": "main2$ebnf$1", "symbols": ["main2$ebnf$1", "main2$ebnf$1$subexpression$1"], "postprocess": function (d) { return d[0].concat([d[1]]); } },
+    { "name": "main2", "symbols": ["exp2", "main2$ebnf$1"], "postprocess": oneString },
     { "name": "exp2", "symbols": ["fmlXp2"], "postprocess": id },
-    { "name": "exp2", "symbols": [(lexer.has("posArg") ? { type: "posArg" } : posArg)], "postprocess": id },
-    { "name": "exp2", "symbols": ["rng"], "postprocess": id },
     { "name": "exp2", "symbols": ["primitive"], "postprocess": id },
+    { "name": "exp2", "symbols": [(lexer.has("posArg") ? { type: "posArg" } : posArg)], "postprocess": id },
     { "name": "fmlXp2", "symbols": ["fml2"], "postprocess": id },
     { "name": "fmlXp2", "symbols": ["dynfml2"], "postprocess": id },
     { "name": "fml2$ebnf$1", "symbols": ["param"], "postprocess": id },

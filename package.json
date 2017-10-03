@@ -8,7 +8,10 @@
     "ts-compile": "tsc --target ES5 formula-parser.ts formula-grammar.ts argument-grammar.ts dynamic-range-grammar.ts",
     "build": "npm run build-grammars && npm run ts-compile",
     "test": "npm run build && node test.js",
-    "test-grammar": "npm run build && nearley-test ./formula-grammar.js -i $1"
+    "test-grammar": "npm run build && nearley-test ./formula-grammar.js -i $1",
+    "test-arg-grammar": "npm run build && nearley-test ./argument-grammar.js -i $1",
+    "uglify": "run(){ uglifyjs --mangle --compress -- $1 > out/$1; }; run",
+    "package": "npm run build && rm -rf out/* &&  npm run uglify -- formula-grammar.js && npm run uglify -- argument-grammar.js && npm run uglify -- formula-parser.js"
   },
   "repository": {
     "type": "git",
@@ -27,7 +30,8 @@
   "homepage": "https://github.com/rylphs/gsp-fml-parser#readme",
   "dependencies": {
     "moo": "^0.4.3",
-    "nearley": "^2.11.0"
+    "nearley": "^2.11.0",
+    "uglify-js": "^3.1.3"
   },
   "devDependencies": {
     "typescript": "^2.5.3"

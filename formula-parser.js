@@ -4,7 +4,7 @@ var nearley = require("nearley");
 var argGrammar = require("./argument-grammar.js");
 var fmlGrammar = require("./formula-grammar.js");
 function parse(map, value, args) {
-    // console.log("parsing... ", value, args);
+    // console.log("parsing... '" +  value + "'", args);
     var parsed = "";
     var fmlParser = new nearley.Parser(nearley.Grammar.fromCompiled(fmlGrammar));
     var argParser = new nearley.Parser(nearley.Grammar.fromCompiled(argGrammar));

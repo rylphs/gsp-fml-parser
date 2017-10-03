@@ -5,7 +5,7 @@ const argGrammar = require("./argument-grammar.js");
 const fmlGrammar = require("./formula-grammar.js");
 
 export function parse(map: any, value: string, args?: string[]) {
-    // console.log("parsing... ", value, args);
+    // console.log("parsing... '" +  value + "'", args);
     var parsed = "";
     const fmlParser = <any> new nearley.Parser(nearley.Grammar.fromCompiled(fmlGrammar));
     var argParser = <any> new nearley.Parser(nearley.Grammar.fromCompiled(argGrammar));

@@ -10,11 +10,16 @@ const context:any = !!module ? module.exports : {}
 const moo = require("moo");
 
 const lexer = moo.compile({
-    escaped: {match: /\\%[0-9]+/, value: (str) => str.replace(/^\\+/, '')},
+    arr: {match: /\{[^{}]+\}/},
+ //   escaped: {match: /\\%[0-9]+/, value: (str) => str.replace(/^\\+/, '')},
     quoted: {match: /"[^"]*"/},
     argument: {match: /%[0-9]+/, value: (arg) => arg.replace(/^\%/, '')},
     dynfml: {match: /\%[\w]+[ \t]*\(/ },
-    anythingElse: {match: /(?:\\[^%])?[^%"\\]+/, lineBreaks: true} 
+    r2c2: {match: /\s*\%[Rr][\+\-][0-9]+[Cc][\+\-][0-9]+\s*/},
+    r1c1: {match: /\s*\%[Rr](?:[0-9]+|\[-?[0-9]+\])[Cc](?:[0-9]+|\[-?[0-9]+\])(?:[Rr](?:[0-9]+|\[-?[0-9]+\])[Cc](?:[0-9]+|\[-?[0-9]+\]))?\s*/},
+    
+    anythingElse: {match: /[^%]+/, lineBreaks: true},
+    
 });
 
 const nuller = () => null;
@@ -28,6 +33,6 @@ const replaceArg = ([argIndex]) => {
 @lexer lexer
 
 main -> exp {%flatten%}
-exp -> (%escaped {%id%} | %dynfml {%id%} |
-    %quoted {%id%} | %argument {%replaceArg%} |
+exp -> (%dynfml {%id%} |
+    %quoted {%id%} | %argument {%replaceArg%} | %r1c1 {%id%} | %r2c2 {%id%} | 
     %anythingElse {%id%}):*
