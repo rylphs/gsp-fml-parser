@@ -8,7 +8,7 @@ var fmlStack = [];
 var fmlMap = {};
 var processFml = function (_a) {
     var fml = _a[0], firstParam = _a[1], restParams = _a[2], endFml = _a[3];
-    fml.args = [firstParam.text].concat(restParams.map(function (item) { return item[1].text; }));
+    fml.args = [firstParam.value].concat(restParams.map(function (item) { return item[1].value; }));
     return fml;
 };
 var processParam = function (arr) {
@@ -17,12 +17,12 @@ var processParam = function (arr) {
         return arg;
     var fml = fmlStack.pop();
     fml.args = fml.args || [];
-    fml.args.push(arg.text);
+    fml.args.push(arg.value);
     fmlStack.push(fml);
     return arg;
 };
 var oneString = function (arr) {
-    arr[0].text = flatten(arr).reduce(function (reduced, item) { return reduced + (item.text || ""); }, "");
+    arr[0].value = flatten(arr).reduce(function (reduced, item) { return reduced + (item.value || ""); }, "");
     return arr[0];
 };
 var cpValue2Text = function (_a) {
@@ -43,7 +43,7 @@ var flatten = function (arr) {
         return flat;
     }, []);
 };
-var trim = function (v) { return v.replace(/^\s*([^"]+)\s*$/, '$1'); };
+var trim = function (v) { return v.replace(/^\s*([^\s]+)\s*$/, '$1'); };
 var removePercent = function (v) { return trim(v).replace(/^\%/, ''); };
 var formatFml = function (v) { return v.replace(/\s*\%([\w]+)[\s]*\(\s*/, '$1'); };
 var removeSpaces = function (v) { return v.replace(/\s*/g, ''); };
@@ -52,8 +52,8 @@ var token = function (name, opt) {
     var tks = {
         posArg: { match: /\s*%[0-9]+\s*/, value: removePercent },
         dynfml: { match: /\s*\%[\w]+[\s]*\(\s*/, value: formatFml },
-        number: { match: / *[0-9]+ */, value: removeSpaces },
-        op: { match: /\s*[\+\-\/\*]\s*/, value: removeSpaces },
+        number: { match: /\s*[0-9]+\s*/, value: trim },
+        op: { match: /\s*[\+\-\/\*]\s*/, value: trim },
         fml: { match: /\s*[A-Za-z][A-Za-z0-9]*\s*\(\s*/, value: removeSpaces },
         a1b1: {
             match: /\s*(?:[a-zA-Z]+[0-9]+(?:\:[a-zA-Z]+[0-9]+)?|[a-zA-Z]+\:[a-zA-Z]+|[0-9]+\:[0-9]+)\s*/,
@@ -63,10 +63,9 @@ var token = function (name, opt) {
         r1c1: { match: /\s*\%[Rr](?:[0-9]+|\[-?[0-9]+\])[Cc](?:[0-9]+|\[-?[0-9]+\])(?:[Rr](?:[0-9]+|\[-?[0-9]+\])[Cc](?:[0-9]+|\[-?[0-9]+\]))?\s*/,
             value: function (r1c1) { return 'INDIRECT("' + trim(r1c1).replace(/^\%/, '') + '";FALSE)'; } },
         sep: { match: /\s*;\s*/, value: trim },
-        spc: { match: /[\t ]+/, pop: true },
         quote_: { match: /\s*"/, value: trim },
         _quote: { match: /"\s*/, value: trim },
-        boolean: { match: /(?:[Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee])/ }
+        boolean: { match: /(?:[Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee])/, value: trim }
     };
     var tk = tks[name];
     for (var i in opt) {
@@ -117,7 +116,7 @@ exports.ParserRules = [
     { "name": "exp", "symbols": ["primitive"], "postprocess": id },
     { "name": "exp", "symbols": [(lexer.has("posArg") ? { type: "posArg" } : posArg)], "postprocess": id },
     { "name": "exp", "symbols": ["rng"], "postprocess": id },
-    { "name": "primitive", "symbols": [(lexer.has("number") ? { type: "number" } : number)], "postprocess": cpValue2Text },
+    { "name": "primitive", "symbols": [(lexer.has("number") ? { type: "number" } : number)], "postprocess": id },
     { "name": "primitive", "symbols": ["quote"], "postprocess": id },
     { "name": "primitive", "symbols": [(lexer.has("boolean") ? { type: "boolean" } : boolean)], "postprocess": id },
     { "name": "fmlXp", "symbols": ["fml"], "postprocess": id },
@@ -135,8 +134,9 @@ exports.ParserRules = [
     { "name": "dynfml$ebnf$2", "symbols": ["dynfml$ebnf$2", "dynfml$ebnf$2$subexpression$1"], "postprocess": function (d) { return d[0].concat([d[1]]); } },
     { "name": "dynfml", "symbols": [(lexer.has("dynfml") ? { type: "dynfml" } : dynfml), "dynfml$ebnf$1", "dynfml$ebnf$2", "endFml"], "postprocess": processFml },
     { "name": "rng", "symbols": [(lexer.has("a1b1") ? { type: "a1b1" } : a1b1)], "postprocess": id },
-    { "name": "rng", "symbols": [(lexer.has("r1c1") ? { type: "r1c1" } : r1c1)], "postprocess": cpValue2Text },
+    { "name": "rng", "symbols": [(lexer.has("r1c1") ? { type: "r1c1" } : r1c1)], "postprocess": id },
     { "name": "quote", "symbols": [(lexer.has("quote_") ? { type: "quote_" } : quote_), (lexer.has("quoted") ? { type: "quoted" } : quoted), (lexer.has("_quote") ? { type: "_quote" } : _quote)], "postprocess": oneString },
+    { "name": "endFml", "symbols": [(lexer.has("endFml") ? { type: "endFml" } : endFml)], "postprocess": id },
     { "name": "param", "symbols": ["exp2"], "postprocess": id },
     { "name": "exp2", "symbols": ["fmlXp2"], "postprocess": id },
     { "name": "exp2", "symbols": [(lexer.has("posArg") ? { type: "posArg" } : posArg)], "postprocess": id },
@@ -155,7 +155,6 @@ exports.ParserRules = [
     { "name": "dynfml2$ebnf$2", "symbols": [] },
     { "name": "dynfml2$ebnf$2$subexpression$1", "symbols": [(lexer.has("sep") ? { type: "sep" } : sep), "param"] },
     { "name": "dynfml2$ebnf$2", "symbols": ["dynfml2$ebnf$2", "dynfml2$ebnf$2$subexpression$1"], "postprocess": function (d) { return d[0].concat([d[1]]); } },
-    { "name": "dynfml2", "symbols": [(lexer.has("dynfml") ? { type: "dynfml" } : dynfml), "dynfml2$ebnf$1", "dynfml2$ebnf$2", "endFml"], "postprocess": processFml },
-    { "name": "endFml", "symbols": [(lexer.has("endFml") ? { type: "endFml" } : endFml)], "postprocess": cpValue2Text }
+    { "name": "dynfml2", "symbols": [(lexer.has("dynfml") ? { type: "dynfml" } : dynfml), "dynfml2$ebnf$1", "dynfml2$ebnf$2", "endFml"], "postprocess": processFml }
 ];
 exports.ParserStart = "main";

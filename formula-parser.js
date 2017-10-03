@@ -21,7 +21,7 @@ function parse(map, value, args) {
     for (var i in results) {
         var result = results[i]; // console.log("result ", result);
         if (result.type !== 'dynfml') {
-            parsed += result.text;
+            parsed += result.value;
             continue;
         }
         // console.log("parsing token ", result);

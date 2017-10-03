@@ -28,7 +28,7 @@ export function parse(map: any, value: string, args?: string[]) {
         
         var result = results[i];// console.log("result ", result);
         if(result.type !== 'dynfml'){
-            parsed += result.text;
+            parsed += result.value;
             continue;
         }
 
