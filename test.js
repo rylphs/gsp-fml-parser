@@ -2,6 +2,7 @@
 
 const nearley = require("nearley");
 const grammar2 = require("./argument-grammar.js");
+const stylegrammar = require("./stylize-grammar.js");
 
 var map = {
     f0: "sumproduct(325;%0)",
@@ -53,5 +54,29 @@ function teste2(){
     console.log("result", result);
 }
 
-test();
+function testStylize(){
+    const input = '%acumulado(%r[0]c[-1])*(sum(25)*(sum(9;8)/9)+3)*sum(7;a1:b1)';
+    const parser = new nearley.Parser(nearley.Grammar.fromCompiled(stylegrammar));
+    var html = "<!DOCTYPE html><html><head><style>"+
+        ".r1c1, .a1b1{color:red}"+
+        ".tk::before{content: ' '}"+
+        ".tk::after{content: ' '}"+
+        ".dynfml_{color:blue;}"+
+        ".nb{color: orange}"+
+        ".sep{color:black}"+
+        ".op{color: green}"+
+        ".fml_{color:blue}"+
+        "</style></head><body>";
+    var s = new Date().getTime();
+    parser.feed(input);
+    var results = parser.results[0];
+    for(var i in results){
+        html += results[i].text;
+    }
+    var e = new Date().getTime();
+    console.log(e-s);
+    console.log(html + "</body></html>");
+}
+
+testStylize();
 
