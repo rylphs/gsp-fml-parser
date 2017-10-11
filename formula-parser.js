@@ -34,7 +34,6 @@ function parseFml(map, value, args) {
         if (result.args) {
             result.args = result.args.map(function (arg) { return parseFml(map, arg); });
             if (result.type == 'fml') {
-                console.log("join result", result.args, result.args.join(';'));
                 parsed += result.text + result.args.join(';') + ")";
             }
             else {

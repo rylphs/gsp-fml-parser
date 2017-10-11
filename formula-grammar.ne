@@ -20,17 +20,6 @@ const text2Value = ([item]) =>{
     return item;
 }
 
-const processParam = (arr) => {
-    var arg = arr[0];
-    if(fmlStack.length <= 0) return arg;
-    var fml = fmlStack.pop();
-    
-    fml.args = fml.args || [];
-    fml.args.push(arg.value);
-    fmlStack.push(fml);
-    return arg;
-}
-
 const oneString = (arr) => {
     arr[0].text = flatten(arr).reduce((reduced, item) => {
         reduced += (item.text || "")
@@ -39,16 +28,6 @@ const oneString = (arr) => {
     arr[0].value = arr[0].text;
     return arr[0];
 }
-
-const cpValue2Text = ([item]) => {
-    item.text = item.value;
-    return item;
-}
-
-const processEndFml = (arr) => {
-    fmlStack.pop();
-    return null;
-} 
 
 const flatten = (arr) => {
     return arr.reduce((flat, item) =>{
@@ -66,8 +45,6 @@ const removeSpaces = (v) => v.replace(/\s*/g, '');
 
 const token = function(name, opt:any = {}){
     var tks = {
-        lp: {match:/\(/, value: trim},
-        rp: {match:/\)/, value: trim},
         posArg: {match: /\s*%[0-9]+\s*/, value: removePercent},
         dynfml: {match: /\s*\%[\w]+[\s]*\(\s*/, value: formatFml},
         number: {match: /\s*(?:[0-9]?[,\.])?[0-9]+\s*/, value: trim},
@@ -132,8 +109,6 @@ const lexer = moo.states({
         arr: token("arr")
     }
 })
-
-
 %}
 
 @lexer lexer
@@ -148,9 +123,9 @@ rng -> %a1b1 {%id%} | %r1c1 {%text2Value%} | %r2c2 {%text2Value%}
 quote -> %quote_ %quoted:? %_quote {%oneString%}
 endFml -> %endFml {%id%}
 
-param -> main2 {%id%}
+param -> main2 {%oneString%}
 
-main2 -> exp2 (%op exp2):* {%oneString%}
+main2 -> exp2 (%op exp2):* {%flatten%}
 exp2 -> fmlXp2 {%id%} | primitive {%id%} | %posArg {%id%}
 fmlXp2 -> fml2 {%id%} | dynfml2 {%id%}
 fml2 -> %fml param:? (%sep param):* endFml {%oneString%}

@@ -37,17 +37,6 @@ const text2Value = ([item]) =>{
     return item;
 }
 
-const processParam = (arr) => {
-    var arg = arr[0];
-    if(fmlStack.length <= 0) return arg;
-    var fml = fmlStack.pop();
-    
-    fml.args = fml.args || [];
-    fml.args.push(arg.value);
-    fmlStack.push(fml);
-    return arg;
-}
-
 const oneString = (arr) => {
     arr[0].text = flatten(arr).reduce((reduced, item) => {
         reduced += (item.text || "")
@@ -56,16 +45,6 @@ const oneString = (arr) => {
     arr[0].value = arr[0].text;
     return arr[0];
 }
-
-const cpValue2Text = ([item]) => {
-    item.text = item.value;
-    return item;
-}
-
-const processEndFml = (arr) => {
-    fmlStack.pop();
-    return null;
-} 
 
 const flatten = (arr) => {
     return arr.reduce((flat, item) =>{
@@ -83,8 +62,6 @@ const removeSpaces = (v) => v.replace(/\s*/g, '');
 
 const token = function(name, opt:any = {}){
     var tks = {
-        lp: {match:/\(/, value: trim},
-        rp: {match:/\)/, value: trim},
         posArg: {match: /\s*%[0-9]+\s*/, value: removePercent},
         dynfml: {match: /\s*\%[\w]+[\s]*\(\s*/, value: formatFml},
         number: {match: /\s*(?:[0-9]?[,\.])?[0-9]+\s*/, value: trim},
@@ -149,8 +126,6 @@ const lexer = moo.states({
         arr: token("arr")
     }
 })
-
-
 export interface Token {value:any; [key: string]:any};
 export interface Lexer {reset:(chunk:string, info:any) => void; next:() => Token | undefined; save:() => any; formatError:(token:Token) => string; has:(tokenType:string) => boolean};
 export interface NearleyRule {name:string; symbols:NearleySymbol[]; postprocess?:(d:any[],loc?:number,reject?:{})=>any};
@@ -190,11 +165,11 @@ export var ParserRules:NearleyRule[] = [
     {"name": "quote$ebnf$1", "symbols": [], "postprocess": () => null},
     {"name": "quote", "symbols": [(lexer.has("quote_") ? {type: "quote_"} : quote_), "quote$ebnf$1", (lexer.has("_quote") ? {type: "_quote"} : _quote)], "postprocess": oneString},
     {"name": "endFml", "symbols": [(lexer.has("endFml") ? {type: "endFml"} : endFml)], "postprocess": id},
-    {"name": "param", "symbols": ["main2"], "postprocess": id},
+    {"name": "param", "symbols": ["main2"], "postprocess": oneString},
     {"name": "main2$ebnf$1", "symbols": []},
     {"name": "main2$ebnf$1$subexpression$1", "symbols": [(lexer.has("op") ? {type: "op"} : op), "exp2"]},
     {"name": "main2$ebnf$1", "symbols": ["main2$ebnf$1", "main2$ebnf$1$subexpression$1"], "postprocess": (d) => d[0].concat([d[1]])},
-    {"name": "main2", "symbols": ["exp2", "main2$ebnf$1"], "postprocess": oneString},
+    {"name": "main2", "symbols": ["exp2", "main2$ebnf$1"], "postprocess": flatten},
     {"name": "exp2", "symbols": ["fmlXp2"], "postprocess": id},
     {"name": "exp2", "symbols": ["primitive"], "postprocess": id},
     {"name": "exp2", "symbols": [(lexer.has("posArg") ? {type: "posArg"} : posArg)], "postprocess": id},

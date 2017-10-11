@@ -49,7 +49,6 @@ function parseFml(map: any, value: string, args?: string[]) {
             result.args = result.args.map((arg)=>parseFml(map, arg))
 
             if(result.type == 'fml'){
-                console.log("join result", result.args, result.args.join(';'));
                 parsed += result.text + result.args.join(';') + ")";
             }
 

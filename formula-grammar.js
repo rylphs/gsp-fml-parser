@@ -16,16 +16,6 @@ var text2Value = function (_a) {
     item.text = item.value;
     return item;
 };
-var processParam = function (arr) {
-    var arg = arr[0];
-    if (fmlStack.length <= 0)
-        return arg;
-    var fml = fmlStack.pop();
-    fml.args = fml.args || [];
-    fml.args.push(arg.value);
-    fmlStack.push(fml);
-    return arg;
-};
 var oneString = function (arr) {
     arr[0].text = flatten(arr).reduce(function (reduced, item) {
         reduced += (item.text || "");
@@ -33,15 +23,6 @@ var oneString = function (arr) {
     }, "");
     arr[0].value = arr[0].text;
     return arr[0];
-};
-var cpValue2Text = function (_a) {
-    var item = _a[0];
-    item.text = item.value;
-    return item;
-};
-var processEndFml = function (arr) {
-    fmlStack.pop();
-    return null;
 };
 var flatten = function (arr) {
     return arr.reduce(function (flat, item) {
@@ -59,8 +40,6 @@ var removeSpaces = function (v) { return v.replace(/\s*/g, ''); };
 var token = function (name, opt) {
     if (opt === void 0) { opt = {}; }
     var tks = {
-        lp: { match: /\(/, value: trim },
-        rp: { match: /\)/, value: trim },
         posArg: { match: /\s*%[0-9]+\s*/, value: removePercent },
         dynfml: { match: /\s*\%[\w]+[\s]*\(\s*/, value: formatFml },
         number: { match: /\s*(?:[0-9]?[,\.])?[0-9]+\s*/, value: trim },
@@ -161,11 +140,11 @@ exports.ParserRules = [
     { "name": "quote$ebnf$1", "symbols": [], "postprocess": function () { return null; } },
     { "name": "quote", "symbols": [(lexer.has("quote_") ? { type: "quote_" } : quote_), "quote$ebnf$1", (lexer.has("_quote") ? { type: "_quote" } : _quote)], "postprocess": oneString },
     { "name": "endFml", "symbols": [(lexer.has("endFml") ? { type: "endFml" } : endFml)], "postprocess": id },
-    { "name": "param", "symbols": ["main2"], "postprocess": id },
+    { "name": "param", "symbols": ["main2"], "postprocess": oneString },
     { "name": "main2$ebnf$1", "symbols": [] },
     { "name": "main2$ebnf$1$subexpression$1", "symbols": [(lexer.has("op") ? { type: "op" } : op), "exp2"] },
     { "name": "main2$ebnf$1", "symbols": ["main2$ebnf$1", "main2$ebnf$1$subexpression$1"], "postprocess": function (d) { return d[0].concat([d[1]]); } },
-    { "name": "main2", "symbols": ["exp2", "main2$ebnf$1"], "postprocess": oneString },
+    { "name": "main2", "symbols": ["exp2", "main2$ebnf$1"], "postprocess": flatten },
     { "name": "exp2", "symbols": ["fmlXp2"], "postprocess": id },
     { "name": "exp2", "symbols": ["primitive"], "postprocess": id },
     { "name": "exp2", "symbols": [(lexer.has("posArg") ? { type: "posArg" } : posArg)], "postprocess": id },

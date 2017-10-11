@@ -40,7 +40,7 @@ const test = function(){
         {text:"%quarta(4)^3,6", result: "((4^2)^2)^3,6"},
         {text:"%quarta(4)^,6", result: "((4^2)^2)^,6"},
         {text:"%quarta(4)^.6", result: "((4^2)^2)^.6"},
-     //   {text: "%e4(1)", result: "(1+1+1)"},
+        {text: "%e4(1)", result: "((1+1+1))"},
        //{text: "%COMECOTAS(D1;3)", result: ""},
       //  {text: "%h(23)", result: ""}
     ];
