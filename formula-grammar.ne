@@ -9,8 +9,15 @@ var fmlStack = [];
 var fmlMap = {};
 
 const processFml = ([fml, firstParam, restParams, endFml]) => {
-    fml.args = [firstParam.value].concat(restParams.map((item)=> item[1].value))
+    fml.args = firstParam ? 
+        [firstParam.value].concat(restParams.map((item)=> item[1].value)) :
+        [];
     return fml;
+}
+
+const text2Value = ([item]) =>{
+    item.text = item.value;
+    return item;
 }
 
 const processParam = (arr) => {
@@ -25,7 +32,11 @@ const processParam = (arr) => {
 }
 
 const oneString = (arr) => {
-    arr[0].value = flatten(arr).reduce((reduced, item) => reduced + (item.value || ""), "");
+    arr[0].text = flatten(arr).reduce((reduced, item) => {
+        reduced += (item.text || "")
+        return reduced;
+    }, "");
+    arr[0].value = arr[0].text;
     return arr[0];
 }
 
@@ -48,19 +59,19 @@ const flatten = (arr) => {
     },[]);
 }
 
-const trim = (v) => v.replace(/^\s*([^\s]+)\s*$/, '$1');
-const removePercent = (v) => trim(v).replace(/^\%/, '');
-const formatFml = (v) => v.replace(/\s*\%([\w]+)[\s]*\(\s*/, '$1');
+const trim = (v) => v.trim();
+const removePercent = (v) => v.trim().replace(/^\%/, '');
+const formatFml = (v) => v.trim().replace(/\s*\%([\w]+)[\s]*\(\s*/, '$1');
 const removeSpaces = (v) => v.replace(/\s*/g, '');
 
 const token = function(name, opt:any = {}){
     var tks = {
-        lp: {match:/\(/},
-        rp: {match:/\)/},
+        lp: {match:/\(/, value: trim},
+        rp: {match:/\)/, value: trim},
         posArg: {match: /\s*%[0-9]+\s*/, value: removePercent},
         dynfml: {match: /\s*\%[\w]+[\s]*\(\s*/, value: formatFml},
-        number: {match: /\s*[0-9]+\s*/, value: trim},
-        op: {match: /\s*[\+\-\/\*]\s*/, value: trim},
+        number: {match: /\s*(?:[0-9]?[,\.])?[0-9]+\s*/, value: trim},
+        op: {match: /\s*(?:<>|<=|>=|[\^\+\-\/\*><=])\s*/, value: trim},
         fml: {match: /\s*(?:[A-Za-z][A-Za-z0-9]*)?\s*\(\s*/, value: removeSpaces},
         a1b1: {
             match: /\s*(?:[a-zA-Z]+[0-9]+(?:\:[a-zA-Z]+[0-9]+)?|[a-zA-Z]+\:[a-zA-Z]+|[0-9]+\:[0-9]+)\s*/,
@@ -76,7 +87,7 @@ const token = function(name, opt:any = {}){
         quote_: {match:/\s*"/, value: trim},
         _quote: {match:/"\s*/, value: trim},
         boolean: {match: /(?:[Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee])/, value: trim},
-        arr: {match: /\{[^\{\}]+\}/}
+        arr: {match: /\{[^\{\}]+\}/, value: trim}
     };
 
     var tk = tks[name];
@@ -131,16 +142,17 @@ main -> exp (%op exp):* {%flatten%}
 exp -> fmlXp {%id%} | primitive {%id%} | %posArg {%id%} 
 primitive -> %number {%id%} | quote {%id%} | %boolean {%id%} | rng {%id%} | %arr {%id%}
 fmlXp -> fml {%id%} | dynfml {%id%}
-fml -> %fml param:? (%sep param):* endFml
+fml -> %fml param:? (%sep param):* endFml {%processFml%}
 dynfml -> %dynfml param:? (%sep param):* endFml {%processFml%}
-rng -> %a1b1 {%id%} | %r1c1 {%id%} | %r2c2 {%id%}
-quote -> %quote_ %quoted %_quote {%oneString%}
+rng -> %a1b1 {%id%} | %r1c1 {%text2Value%} | %r2c2 {%text2Value%}
+quote -> %quote_ %quoted:? %_quote {%oneString%}
 endFml -> %endFml {%id%}
 
 param -> main2 {%id%}
+
 main2 -> exp2 (%op exp2):* {%oneString%}
 exp2 -> fmlXp2 {%id%} | primitive {%id%} | %posArg {%id%}
 fmlXp2 -> fml2 {%id%} | dynfml2 {%id%}
 fml2 -> %fml param:? (%sep param):* endFml {%oneString%}
-dynfml2 -> %dynfml param:? (%sep param):* endFml {%processFml%}
+dynfml2 -> %dynfml param:? (%sep param):* endFml {%oneString%}
 

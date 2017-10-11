@@ -1,14 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-// Generated automatically by nearley
-// http://github.com/Hardmath123/nearley
 function id(d) { return d[0]; }
 var module = module || { exports: exports };
 var context = !!module ? module.exports : {};
 var moo = require("moo");
 var lexer = moo.compile({
     arr: { match: /\{[^{}]+\}/ },
-    //   escaped: {match: /\\%[0-9]+/, value: (str) => str.replace(/^\\+/, '')},
     quoted: { match: /"[^"]*"/ },
     argument: { match: /%[0-9]+/, value: function (arg) { return arg.replace(/^\%/, ''); } },
     dynfml: { match: /\%[\w]+[ \t]*\(/ },
@@ -20,7 +17,12 @@ var nuller = function () { return null; };
 var flatten = function (arr) { return arr[0][0]; };
 var replaceArg = function (_a) {
     var argIndex = _a[0];
+    console.log("processed? ", argIndex.processed);
+    if (!!argIndex.processed)
+        return argIndex;
+    argIndex.processed = true;
     argIndex.value = context.args[Number(argIndex.value)] || "";
+    argIndex.text = argIndex.value;
     return argIndex;
 };
 ;

@@ -1,7 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-// Generated automatically by nearley
-// http://github.com/Hardmath123/nearley
 function id(d) { return d[0]; }
 var moo = require("moo");
 var lexer = moo.compile({

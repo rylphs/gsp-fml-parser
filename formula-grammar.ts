@@ -26,8 +26,15 @@ var fmlStack = [];
 var fmlMap = {};
 
 const processFml = ([fml, firstParam, restParams, endFml]) => {
-    fml.args = [firstParam.value].concat(restParams.map((item)=> item[1].value))
+    fml.args = firstParam ? 
+        [firstParam.value].concat(restParams.map((item)=> item[1].value)) :
+        [];
     return fml;
+}
+
+const text2Value = ([item]) =>{
+    item.text = item.value;
+    return item;
 }
 
 const processParam = (arr) => {
@@ -42,7 +49,11 @@ const processParam = (arr) => {
 }
 
 const oneString = (arr) => {
-    arr[0].value = flatten(arr).reduce((reduced, item) => reduced + (item.value || ""), "");
+    arr[0].text = flatten(arr).reduce((reduced, item) => {
+        reduced += (item.text || "")
+        return reduced;
+    }, "");
+    arr[0].value = arr[0].text;
     return arr[0];
 }
 
@@ -65,19 +76,19 @@ const flatten = (arr) => {
     },[]);
 }
 
-const trim = (v) => v.replace(/^\s*([^\s]+)\s*$/, '$1');
-const removePercent = (v) => trim(v).replace(/^\%/, '');
-const formatFml = (v) => v.replace(/\s*\%([\w]+)[\s]*\(\s*/, '$1');
+const trim = (v) => v.trim();
+const removePercent = (v) => v.trim().replace(/^\%/, '');
+const formatFml = (v) => v.trim().replace(/\s*\%([\w]+)[\s]*\(\s*/, '$1');
 const removeSpaces = (v) => v.replace(/\s*/g, '');
 
 const token = function(name, opt:any = {}){
     var tks = {
-        lp: {match:/\(/},
-        rp: {match:/\)/},
+        lp: {match:/\(/, value: trim},
+        rp: {match:/\)/, value: trim},
         posArg: {match: /\s*%[0-9]+\s*/, value: removePercent},
         dynfml: {match: /\s*\%[\w]+[\s]*\(\s*/, value: formatFml},
-        number: {match: /\s*[0-9]+\s*/, value: trim},
-        op: {match: /\s*[\+\-\/\*]\s*/, value: trim},
+        number: {match: /\s*(?:[0-9]?[,\.])?[0-9]+\s*/, value: trim},
+        op: {match: /\s*(?:<>|<=|>=|[\^\+\-\/\*><=])\s*/, value: trim},
         fml: {match: /\s*(?:[A-Za-z][A-Za-z0-9]*)?\s*\(\s*/, value: removeSpaces},
         a1b1: {
             match: /\s*(?:[a-zA-Z]+[0-9]+(?:\:[a-zA-Z]+[0-9]+)?|[a-zA-Z]+\:[a-zA-Z]+|[0-9]+\:[0-9]+)\s*/,
@@ -93,7 +104,7 @@ const token = function(name, opt:any = {}){
         quote_: {match:/\s*"/, value: trim},
         _quote: {match:/"\s*/, value: trim},
         boolean: {match: /(?:[Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee])/, value: trim},
-        arr: {match: /\{[^\{\}]+\}/}
+        arr: {match: /\{[^\{\}]+\}/, value: trim}
     };
 
     var tk = tks[name];
@@ -165,7 +176,7 @@ export var ParserRules:NearleyRule[] = [
     {"name": "fml$ebnf$2", "symbols": []},
     {"name": "fml$ebnf$2$subexpression$1", "symbols": [(lexer.has("sep") ? {type: "sep"} : sep), "param"]},
     {"name": "fml$ebnf$2", "symbols": ["fml$ebnf$2", "fml$ebnf$2$subexpression$1"], "postprocess": (d) => d[0].concat([d[1]])},
-    {"name": "fml", "symbols": [(lexer.has("fml") ? {type: "fml"} : fml), "fml$ebnf$1", "fml$ebnf$2", "endFml"]},
+    {"name": "fml", "symbols": [(lexer.has("fml") ? {type: "fml"} : fml), "fml$ebnf$1", "fml$ebnf$2", "endFml"], "postprocess": processFml},
     {"name": "dynfml$ebnf$1", "symbols": ["param"], "postprocess": id},
     {"name": "dynfml$ebnf$1", "symbols": [], "postprocess": () => null},
     {"name": "dynfml$ebnf$2", "symbols": []},
@@ -173,9 +184,11 @@ export var ParserRules:NearleyRule[] = [
     {"name": "dynfml$ebnf$2", "symbols": ["dynfml$ebnf$2", "dynfml$ebnf$2$subexpression$1"], "postprocess": (d) => d[0].concat([d[1]])},
     {"name": "dynfml", "symbols": [(lexer.has("dynfml") ? {type: "dynfml"} : dynfml), "dynfml$ebnf$1", "dynfml$ebnf$2", "endFml"], "postprocess": processFml},
     {"name": "rng", "symbols": [(lexer.has("a1b1") ? {type: "a1b1"} : a1b1)], "postprocess": id},
-    {"name": "rng", "symbols": [(lexer.has("r1c1") ? {type: "r1c1"} : r1c1)], "postprocess": id},
-    {"name": "rng", "symbols": [(lexer.has("r2c2") ? {type: "r2c2"} : r2c2)], "postprocess": id},
-    {"name": "quote", "symbols": [(lexer.has("quote_") ? {type: "quote_"} : quote_), (lexer.has("quoted") ? {type: "quoted"} : quoted), (lexer.has("_quote") ? {type: "_quote"} : _quote)], "postprocess": oneString},
+    {"name": "rng", "symbols": [(lexer.has("r1c1") ? {type: "r1c1"} : r1c1)], "postprocess": text2Value},
+    {"name": "rng", "symbols": [(lexer.has("r2c2") ? {type: "r2c2"} : r2c2)], "postprocess": text2Value},
+    {"name": "quote$ebnf$1", "symbols": [(lexer.has("quoted") ? {type: "quoted"} : quoted)], "postprocess": id},
+    {"name": "quote$ebnf$1", "symbols": [], "postprocess": () => null},
+    {"name": "quote", "symbols": [(lexer.has("quote_") ? {type: "quote_"} : quote_), "quote$ebnf$1", (lexer.has("_quote") ? {type: "_quote"} : _quote)], "postprocess": oneString},
     {"name": "endFml", "symbols": [(lexer.has("endFml") ? {type: "endFml"} : endFml)], "postprocess": id},
     {"name": "param", "symbols": ["main2"], "postprocess": id},
     {"name": "main2$ebnf$1", "symbols": []},
@@ -198,6 +211,6 @@ export var ParserRules:NearleyRule[] = [
     {"name": "dynfml2$ebnf$2", "symbols": []},
     {"name": "dynfml2$ebnf$2$subexpression$1", "symbols": [(lexer.has("sep") ? {type: "sep"} : sep), "param"]},
     {"name": "dynfml2$ebnf$2", "symbols": ["dynfml2$ebnf$2", "dynfml2$ebnf$2$subexpression$1"], "postprocess": (d) => d[0].concat([d[1]])},
-    {"name": "dynfml2", "symbols": [(lexer.has("dynfml") ? {type: "dynfml"} : dynfml), "dynfml2$ebnf$1", "dynfml2$ebnf$2", "endFml"], "postprocess": processFml}
+    {"name": "dynfml2", "symbols": [(lexer.has("dynfml") ? {type: "dynfml"} : dynfml), "dynfml2$ebnf$1", "dynfml2$ebnf$2", "endFml"], "postprocess": oneString}
 ];
 export var ParserStart:string = "main";

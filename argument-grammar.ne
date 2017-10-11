@@ -24,8 +24,12 @@ const lexer = moo.compile({
 
 const nuller = () => null;
 const flatten = (arr) => arr[0][0];
-const replaceArg = ([argIndex]) => {
+const replaceArg = ([argIndex]) => { console.log("processed? ", argIndex.processed)
+    if(!!argIndex.processed) return argIndex;
+
+    argIndex.processed = true;
     argIndex.value = context.args[Number(argIndex.value)] || "";
+    argIndex.text = argIndex.value;
     return argIndex;
 }
 %}
